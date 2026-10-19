@@ -1,0 +1,62 @@
+{
+  "name": "@kira905/dsh-host-adapter-client",
+  "version": "0.1.0",
+  "description": "Client-side half of the DSH host adapter: the single source of ctx service names and event names for browser bundles. The host half is an inert cordis plugin whose only purpose is to put this package into the client boot graph, so other bundles can require() the constants instead of writing bare literals.",
+  "license": "AGPL-3.0-only",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/host-adapter.d.ts",
+      "default": "./lib/host-adapter.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  },
+  "bin": {
+    "dsh-host-adapter-deploy": "deploy.mjs",
+    "dsh-host-adapter-sync": "sync-client-host-adapter.mjs"
+  },
+  "files": [
+    "deploy.mjs",
+    "sync-client-host-adapter.mjs",
+    "lib/",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "client-adapter",
+    "cordis",
+    "module-loader",
+    "constants",
+    "codegen"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kira905/dsh-host-adapter-client.git"
+  },
+  "homepage": "https://github.com/kira905/dsh-host-adapter-client#readme",
+  "bugs": {
+    "url": "https://github.com/kira905/dsh-host-adapter-client/issues"
+  }
+}
