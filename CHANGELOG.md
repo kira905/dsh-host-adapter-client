@@ -3,6 +3,13 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/); versions follow SemVer.
 
+## [0.1.1] - 2026-10-30
+
+### Changed
+
+- Comments: internal markers and internal note references removed (no behaviour change; the
+  `sourceSha256` provenance header of the generated artefacts is untouched).
+
 ## [0.1.0] - 2026-10-19
 
 ### Added

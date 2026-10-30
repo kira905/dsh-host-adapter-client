@@ -1,6 +1,6 @@
 {
   "name": "@kira905/dsh-host-adapter-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Client-side half of the DSH host adapter: the single source of ctx service names and event names for browser bundles. The host half is an inert cordis plugin whose only purpose is to put this package into the client boot graph, so other bundles can require() the constants instead of writing bare literals.",
   "license": "AGPL-3.0-only",
   "private": false,

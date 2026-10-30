@@ -2,7 +2,7 @@
 // 本文件由 sync-client-host-adapter.mjs 生成 —— 手工修改会在下一次同步时被覆盖，
 // 且本包的自检（--verify / 单测）会判红（客户端面常量 ≠ 唯一源）。
 // source: lib/host-adapter.mjs
-// sourceSha256: a68d0ea30bdf6e0376c886d4ee8953ee226b22ea3d50c7b6ec55eb99f14fd88a
+// sourceSha256: f74e22f94ded6de38a1ca8997e93ee27d6d6bc2e7512f97ae941b284c2835214
 // sourceVersion: 0.3.1
 // format: client-modules-dts
 // target: @kira905/dsh-host-adapter-client
