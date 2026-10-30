@@ -1,5 +1,34 @@
 # dsh-host-adapter-client · DSH 客户端适配层（服务名 / 事件名唯一来源）
 
+> **本仓是插件（只有客户端半）+ 2 个 bin（`dsh-host-adapter-deploy` / `dsh-host-adapter-sync`）；它不走 `dsh.bundle`，靠自带的 `deploy.mjs` 代劳** —— 装它 = `node deploy.mjs --dry-run` 先看计划、`node deploy.mjs` 真装（参数表见 §4.1）。
+> 手工 `insert` 时注意：现网 profile patch 里写的是**裸名 entry name**（`dsh-host-adapter-client`），不是带 scope 的包名 —— 照带 scope 的包名去找会**找不到**。
+
+## 装完自检（三条只读验法）
+
+`<profile>` 换成你实际用的 profile（默认 `web`），`<数据根>` 换成你的 DSH 数据根（默认 `~/.dsh`）。
+
+```powershell
+# ① 组合树里有没有它（只读、约 0.6 秒、不启服务）
+dsh --profile <profile> --dump-config | Select-String "dsh-host-adapter-client"
+# 期望：出现一行 "# == <?>"，问的是它有没有被挂上（本仓包名 @kira905/dsh-host-adapter-client；带 scope 装的写带 scope 名、
+#       老工装 / 手写的可能是裸名 —— 两种都搜一遍），同一个 id 的计数必须 == 1
+
+# ② 组合列表里有没有它（只读）
+Get-Content <数据根>/profiles/<profile>/package.json | Select-String "@kira905/dsh-host-adapter-client"
+# 期望：**两处都没有是正常的** —— 本包刻意不进 `dependencies` / `dsh.profile.bundles`；
+#       它的登记在 <数据根>/profiles/<profile>/node_modules/.package-map.json（deploy.mjs 写）
+
+# ③ 命令在不在 —— 【只查存在，不执行】
+Test-Path <数据根>/profiles/<profile>/node_modules/.bin/dsh-host-adapter-deploy.CMD   # 装进 profile 的
+Test-Path "$env:APPDATA\npm\dsh-host-adapter-deploy.CMD"                           # npm i -g 装的
+# 期望：True。两条路径按你实际用的装法挑一条
+```
+
+> 探针只做存在性检查（只看命令文件在不在，不执行任何命令）。
+> 要不要用 `--help` 验，见本仓当前说明与该命令的参数表。
+
+---
+
 > 浏览器 bundle（`window.__ModuleLoader__.load({id, factory})`）**物理上引用不到**服务端包的
 > `lib/host-adapter.mjs`。于是各客户端 bundle 里的 `ctx` 服务名（`webServer` / `settings` /
 > `sessions` …）与事件名（`connection/reset` …）**只能写成裸字面量** —— 主包一升级，
