@@ -33,6 +33,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { webProfileDir } from './lib/dsh-home.mjs'
 import { parseArgs, describeUnknown, findEscapingImports, EXIT } from './lib/deploy-guard.mjs'
+import { cliGuard } from './lib/cli-args.mjs'
 import { loadSource, planOf } from './sync-client-host-adapter.mjs'
 
 const SRC = path.dirname(fileURLToPath(import.meta.url))
@@ -47,6 +48,22 @@ const DEPLOY_FILES = [
   ['package.json', 'package.json'],
 ]
 const CHECK_FILES = ['lib/index.js', 'lib/host-adapter.js']
+
+const SPEC = {
+  cmd: 'dsh-host-adapter-deploy',
+  summary: '把本包的客户端适配层装进 web profile：备份三件套 → 复制包文件 → 改 package-map 与 cordis.patch.yml（幂等）。',
+  usage: 'dsh-host-adapter-deploy [--dry-run] [--verify]',
+  flags: [
+    { name: '--dry-run', desc: '只打印计划，一个文件都不写' },
+    { name: '--verify', desc: '只读比对：看 profile 里装的和源是否一致' },
+  ],
+  env: [{ name: 'DSH_ARCHIVE_DIR', desc: '备份落点根目录' }],
+  writes: '默认真部署：先备份 profile 的 package.json / .package-map.json / cordis.patch.yml，再复制包文件、改 package-map 与 patch（已装则跳过）。--dry-run 只打印，--verify 只读。',
+  dryRun: '加 --dry-run 只打印计划；--verify 只读比对。',
+  exits: '0 成功 · 1 部署失败（含导入逃逸检查不过） · 2 用法错 / 未知参数',
+  examples: ['dsh-host-adapter-deploy --verify', 'dsh-host-adapter-deploy --dry-run'],
+};
+cliGuard(SPEC)
 
 // ── 参数白名单（fail-closed，**必须放在一切写操作之前**）──────────────────────
 const KNOWN_ARGS = ['--dry-run', '--verify']
