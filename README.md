@@ -1,5 +1,27 @@
 # dsh-host-adapter-client · DSH 客户端适配层（服务名 / 事件名唯一来源）
 
+> ### 这是什么
+> **浏览器端适配层**：把 `ctx` 的服务名与事件名做成**唯一来源**，由服务端源码生成。
+>
+> ### 它解决什么
+> 前端插件里手写 `'task-board'` 这种字符串，是"改一处、忘一处、线上静默失效"的经典来源。这里从服务端源码**生成**常量表，再用一条命令装进 profile，同时给出 `--verify` 只读校验 —— 让"名字对不对"变成机器判断，而不是靠人记。
+>
+> ### 一条命令跑起来
+> ```powershell
+> npm i -g @kira905/dsh-host-adapter-client
+> dsh-host-adapter-deploy --dry-run    # 先看它要改哪三个文件
+> ```
+>
+> ### 先看它长什么样（真实输出）
+> ```text
+> 用法
+>   dsh-host-adapter-deploy [--dry-run] [--verify]
+>
+> 把本包的客户端适配层装进 web profile：备份三件套 → 复制包文件 → 改 package-map 与 cordis.patch.yml（幂等）。
+> ```
+
+---
+
 > **本仓是插件（只有客户端半）+ 2 个 bin（`dsh-host-adapter-deploy` / `dsh-host-adapter-sync`）；它不走 `dsh.bundle`，靠自带的 `deploy.mjs` 代劳** —— 装它 = `node deploy.mjs --dry-run` 先看计划、`node deploy.mjs` 真装（参数表见 §4.1）。
 > 手工 `insert` 时注意：现网 profile patch 里写的是**裸名 entry name**（`dsh-host-adapter-client`），不是带 scope 的包名 —— 照带 scope 的包名去找会**找不到**。
 
