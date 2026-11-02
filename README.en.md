@@ -1,5 +1,28 @@
 # dsh-host-adapter-client · DSH Client Adapter (single source for service / event names)
 
+> ### What this is
+> **A client adapter**: one source of truth for `ctx` service and event names, generated from the server-side source.
+>
+> ### What it solves
+> Hand-writing `'task-board'`-style strings in frontend plugins is the classic "change one place, forget another, fail silently in production" bug. Here the constants are **generated** from the server source, deployed into a profile by one command, and checked read-only with `--verify` — so "is this name right" becomes a machine answer instead of a memory exercise.
+>
+> ### Run it in one command
+> ```powershell
+> npm i -g @kira905/dsh-host-adapter-client
+> dsh-host-adapter-deploy --dry-run    # see which three files it would touch
+> ```
+>
+> ### Real output
+> ```text
+> Usage
+>   dsh-host-adapter-deploy [--dry-run] [--verify]
+>
+> Installs the client adapter into the web profile: back up three files → copy package files →
+> update package-map and cordis.patch.yml (idempotent).
+> ```
+
+---
+
 > Browser bundles (`window.__ModuleLoader__.load({id, factory})`) **cannot physically import**
 > the server-side `lib/host-adapter.mjs`. So client bundles had to write `ctx` service names
 > (`webServer` / `settings` / `sessions` …) and event names (`connection/reset` …) as bare literals —
