@@ -19,11 +19,19 @@
 //   ③ 源文件语法（node --check）
 //
 // 用法：
-//   node deploy.mjs                       # 装进当前 DSH_HOME（默认 ~/.dsh = 生产）
+//   node deploy.mjs                       # 装进当前 DSH_HOME 的 web profile（默认 ~/.dsh = 生产）
+//   node deploy.mjs --profile desktop     # 装进另一个 profile（桌面版 = desktop）★ 0.2.0 新增
 //   DSH_HOME=<path> node deploy.mjs       # 装进指定 DSH_HOME（隔离测试环境用这个）
 //   node deploy.mjs --dry-run             # 只打印计划，不写任何文件
 //   node deploy.mjs --verify              # 只读：逐文件比对「实体 vs 源码」，不写任何文件
 // 退出码：0 通过 / 1 门禁未过或部署失败 / 2 用法或参数错误。
+//
+// 【0.2.0 · 2026-11-09】本包现在自带 `dsh.bundle.patch`（cordis.patch.yml），
+// 宿主会随 `dsh plugin add` 把它写进 profile 的 dsh.profile.bundles 并自己挂载。
+// 已经走这条路线的 profile 不需要 insert 了 —— 再插一行就是**同 id 两条**，
+// 宿主解析第二行时那个实体名可能已不存在。所以：
+//   · profile 的 bundles 里已经有本包 ⇒ 跳过 cordis.patch.yml 的 insert（打印原因）；
+//   · 没有（老安装方式，实体目录是手放的）⇒ 照旧插一行，行为与 0.1.x 一致。
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -31,14 +39,14 @@ import os from 'node:os'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { webProfileDir } from './lib/dsh-home.mjs'
+import { profileDir } from './lib/dsh-home.mjs'
 import { parseArgs, describeUnknown, findEscapingImports, EXIT } from './lib/deploy-guard.mjs'
 import { cliGuard } from './lib/cli-args.mjs'
 import { loadSource, planOf } from './sync-client-host-adapter.mjs'
 
 const SRC = path.dirname(fileURLToPath(import.meta.url))
 const PKG_NAME = '@kira905/dsh-host-adapter-client'
-const PLUGIN_ID = '@kira905/dsh-host-adapter-client'
+const PLUGIN_ID = 'dsh-host-adapter-client'
 
 // 部署到实体目录的文件（相对路径成对：[源码侧, 实体侧]）
 const DEPLOY_FILES = [
@@ -51,9 +59,10 @@ const CHECK_FILES = ['lib/index.js', 'lib/host-adapter.js']
 
 const SPEC = {
   cmd: 'dsh-host-adapter-deploy',
-  summary: '把本包的客户端适配层装进 web profile：备份三件套 → 复制包文件 → 改 package-map 与 cordis.patch.yml（幂等）。',
-  usage: 'dsh-host-adapter-deploy [--dry-run] [--verify]',
+  summary: '把本包的客户端适配层装进某个 profile：备份三件套 → 复制包文件 → 改 package-map 与 cordis.patch.yml（幂等）。',
+  usage: 'dsh-host-adapter-deploy [--profile <name>] [--dry-run] [--verify]',
   flags: [
+    { name: '--profile <name>', desc: '目标 profile（默认 web；桌面版写 desktop）' },
     { name: '--dry-run', desc: '只打印计划，一个文件都不写' },
     { name: '--verify', desc: '只读比对：看 profile 里装的和源是否一致' },
   ],
@@ -66,7 +75,7 @@ const SPEC = {
 cliGuard(SPEC)
 
 // ── 参数白名单（fail-closed，**必须放在一切写操作之前**）──────────────────────
-const KNOWN_ARGS = ['--dry-run', '--verify']
+const KNOWN_ARGS = ['--dry-run', '--verify', { flag: '--profile', takesValue: true }]
 const pa = parseArgs(process.argv.slice(2), KNOWN_ARGS)
 if (!pa.ok) {
   console.error('[中止] ' + describeUnknown(pa.unknown, KNOWN_ARGS) + '；只读比对请用 --verify（不写任何文件）')
@@ -74,8 +83,18 @@ if (!pa.ok) {
 }
 const DRY_RUN = !!pa.flags['--dry-run']
 const VERIFY_ONLY = !!pa.flags['--verify']
+const PROFILE_NAME = typeof pa.values['--profile'] === 'string' && pa.values['--profile'].trim()
+  ? pa.values['--profile'].trim()
+  : 'web'
 
-const PROFILE = webProfileDir()
+let PROFILE
+try {
+  PROFILE = profileDir(PROFILE_NAME)
+} catch (error) {
+  console.error('[中止] ' + (error?.message ?? String(error)))
+  process.exit(EXIT.USAGE)
+}
+
 const TARGET = path.join(PROFILE, 'node_modules', PKG_NAME)
 const PKG_MAP = path.join(PROFILE, 'node_modules', '.package-map.json')
 const PATCH = path.join(PROFILE, 'cordis.patch.yml')
@@ -232,8 +251,18 @@ async function main() {
   }
 
   // 4) cordis.patch.yml
+  // 【0.2.0】profile 的 dsh.profile.bundles 里已经有本包 ⇒ 宿主自己按 bundle 层挂载，
+  // 这里不能再插一行（同 id 两条，且手放实体的老路子那条 name 在新版 profile 里解析不到）。
+  let bundlesHasUs = false
+  try {
+    const profPkg = JSON.parse(fs.readFileSync(PROFILE_PKG, 'utf8'))
+    bundlesHasUs = (profPkg?.dsh?.profile?.bundles ?? []).includes(PKG_NAME)
+  } catch { bundlesHasUs = false }
   let patchText = fs.readFileSync(PATCH, 'utf8')
-  if (patchText.includes(`id: ${PLUGIN_ID}`)) {
+  if (bundlesHasUs) {
+    const stillHasInsert = patchText.includes(`id: ${PLUGIN_ID}`) || patchText.includes(`name: '${PKG_NAME}'`)
+    log('[cordis.patch] profile 的 bundles 里已有本包 ⇒ 由 bundle 层挂载，不再写 insert' + (stillHasInsert ? '（⚠️ 已存在旧 insert，同 id 两条会解析失败，建议手工摘掉）' : ''))
+  } else if (patchText.includes(`id: ${PLUGIN_ID}`)) {
     log('[cordis.patch] 已存在 insert，跳过')
   } else {
     const block = [
@@ -244,7 +273,8 @@ async function main() {
       '# 浏览器模块表（exports["./client"] → lib/host-adapter.js，文件名即 R4 白名单命中条件），',
       '# 其它 bundle 用 require("@kira905/dsh-host-adapter-client") 取常量，替掉裸服务名/事件名字面量。',
       '# host 半是**空插件**（零 inject / 零副作用）：它存在的唯一理由是把客户端面放进 boot graph。',
-      '# 不进 bundles（client 插件进 bundles 会崩 declares no dsh.bundle）。',
+      '# 0.2.0 起本包自带 dsh.bundle.patch —— 走 `dsh plugin add` 装的 profile 不需要这一行，',
+      '# 这里只服务「实体目录是手放的、包里没有 bundle 层」的老安装方式。',
       '- insert:',
       `    - id: ${JSON.stringify(PLUGIN_ID)}`,
       `      name: '${PKG_NAME}'`,
@@ -262,7 +292,7 @@ async function main() {
   const dup = ids.filter((id, i) => ids.indexOf(id) !== i)
   log(`[校验] cordis.patch.yml 文本扫出 entry 行 ${ids.length} 个；重复 id：${dup.length ? dup.join(',') : '无'}`)
   if (dup.length) problems.push('存在重复 insert id：' + dup.join(','))
-  if (!ids.includes(PLUGIN_ID)) problems.push('未找到 ' + PLUGIN_ID + ' insert')
+  if (!bundlesHasUs && !ids.includes(PLUGIN_ID)) problems.push('未找到 ' + PLUGIN_ID + ' insert')
 
   if (problems.length) {
     console.error('')

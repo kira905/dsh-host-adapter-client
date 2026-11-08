@@ -1,0 +1,22 @@
+# dsh-host-adapter-client bundle patch (0.2.0, 2026-11-09)
+#
+# 本包**只有客户端半有内容**，宿主半是空插件；它存在的唯一理由是把
+# exports["./client"] 放进宿主的 client boot graph，让别的客户端 bundle 能用
+# require("…") 取常量，而不用写裸服务名/事件名字面量。
+#
+# 为什么 0.2.0 起把它写成 dsh.bundle.patch（而不是靠部署命令往 profile 的
+# cordis.patch.yml 里插一行）：
+#   · 部署命令（deploy.mjs）把 profile 写死成 profiles/web，桌面版
+#     （profiles/desktop）没有等价路径 ⇒ 桌面版上这个包永远不进 boot graph，
+#     声明了 external 的消费方（管家面板 / 任务看板）同步 require 必 MISS、
+#     整个客户端 bundle 崩掉，侧边栏连入口都不出现。
+#   · 声明的 dsh.bundle.patch 会被宿主自己挂载：`dsh plugin --profile <p> add`
+#     把它写进 dsh.profile.bundles 之后，那份 patch 就是一整层 bundle 层，
+#     与 web/desktop/任何自定义 profile 无关 —— 装到哪个 profile，就挂哪个 profile。
+#
+# 🔴 name 必须等于 package.json#name（发行名带 scope）。写成不带 scope 的
+#    `dsh-host-adapter-client` 会指向 profile 里根本不存在的包，宿主解析不到该行
+#    （症状：包里 exports["./client"] 明明在，boot graph 里却没有这一条）。
+- insert:
+    - id: dsh-host-adapter-client
+      name: '@kira905/dsh-host-adapter-client'

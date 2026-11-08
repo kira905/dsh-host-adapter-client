@@ -3,6 +3,36 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/); versions follow SemVer.
 
+## [0.2.0] - 2026-11-09
+
+### Added
+
+- **本包自带 `dsh.bundle.patch`（`cordis.patch.yml`）**：`dsh plugin --profile <p> add
+  @kira905/dsh-host-adapter-client` 之后，宿主会把它写进该 profile 的 `dsh.profile.bundles`
+  并自己挂载 —— 于是 Web / 桌面版（`profiles/desktop`）/ 任何自定义 profile **都能**进
+  client boot graph，不再依赖"手放实体 + 跑部署命令"这条只服务 `profiles/web` 的路。
+  没有这一层时，桌面版上这个包永远进不了 boot graph，声明了 `external` 的消费方
+  （管家面板 / 任务看板）同步 `require` 必 MISS、整个客户端 bundle 崩掉（2026-11-09 A-8 关 4 实测）。
+- `lib/dsh-home.mjs` 新增 `profileDir(name, home)`；`deploy.mjs` 新增 `--profile <name>`
+  （默认 `web`，桌面版写 `desktop`）。
+- `deploy.mjs` 现在认得"已经由 bundle 层挂载"的 profile：这种情况下**不再往
+  `cordis.patch.yml` 写 insert**（同 id 两条会让第二行解析失败），并在已存在旧 insert 时
+  明确提示需要摘掉。
+
+### Changed
+
+- 部署命令插的 insert `id` 统一成不带 scope 的 `dsh-host-adapter-client`
+  （与 `cordis.patch.yml` 的 bundle 层、与既有生产 profile 里那一行一致）。
+- 行为兼容：不给 `--profile` 时目标仍是 `<数据根>/profiles/web`，退出码与输出形状不变。
+
+### 判据
+
+- `node --check` 三个文件通过；`--help` 输出含 `--profile`；
+- 隔离 profile（独立 DSH_HOME）上 `dsh plugin add` 本包 ⇒ `dsh --profile <p> --dump-config`
+  出现 `name: '@kira905/dsh-host-adapter-client'` 行，宿主首页 `__DSH_BOOT__` 里出现同名行 id；
+- 对"bundles 里已有本包"的 profile 跑 `deploy.mjs` ⇒ 打印「由 bundle 层挂载，不再写 insert」
+  且 `cordis.patch.yml` 字节不变。
+
 ## [0.1.1] - 2026-10-30
 
 ### Changed
