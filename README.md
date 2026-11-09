@@ -31,12 +31,12 @@
 
 ---
 
-> **本仓是插件（只有客户端半）+ 2 个 bin（`dsh-host-adapter-deploy` / `dsh-host-adapter-sync`）；它不走 `dsh.bundle`，靠自带的 `deploy.mjs` 代劳** —— 装它 = `node deploy.mjs --dry-run` 先看计划、`node deploy.mjs` 真装（参数表见 §4.1）。
+> **本仓是插件（只有客户端半）+ 2 个 bin（`dsh-host-adapter-deploy` / `dsh-host-adapter-sync`）；它不走 `dsh.bundle`（插件 `package.json` 里那行「让 DSH 启动时自动挂上我」的声明，本仓刻意不写），靠自带的 `deploy.mjs` 代劳 —— 由它替你把挂载清单 `cordis.patch.yml` 写好** —— 装它 = `node deploy.mjs --dry-run` 先看计划、`node deploy.mjs` 真装（参数表见 §4.1）。
 > 手工 `insert` 时注意：现网 profile patch 里写的是**裸名 entry name**（`dsh-host-adapter-client`），不是带 scope 的包名 —— 照带 scope 的包名去找会**找不到**。
 
 ## 装完自检（三条只读验法）
 
-`<profile>` 换成你实际用的 profile（默认 `web`），`<数据根>` 换成你的 DSH 数据根（默认 `~/.dsh`）。
+`<profile>` 换成你实际用的 profile（放插件的那个格子，默认 `web`），`<数据根>` 换成你的 DSH 数据根（默认 `~/.dsh`）。
 
 ```powershell
 # ① 组合树里有没有它（只读、约 0.6 秒、不启服务）
